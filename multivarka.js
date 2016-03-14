@@ -1,87 +1,228 @@
 const MongoClient = require('mongodb').MongoClient;
 
-module.exports = {
-    query: {},
+module.exports = function () {
+    return {
+        conditions: [],
 
-    server: function (server) {
-        this.server = server;
-        return this;
-    },
+        updates: {},
 
-    collection: function (collection) {
-        this.collection = collection;
-        return this;
-    },
+        server: function (server) {
+            this.server = server;
 
-    where: function (field) {
-        this.field = field;
-        this.invertCondition = false;
-        return this;
-    },
-
-    equal: function (value) {
-        if (this.field === undefined) {
             return this;
-        }
-        if (!this.invertCondition) {
-            this.query[this.field] = value;
-        } else {
-            this.query[this.field] = { $ne: value };
-        }
-        return this;
-    },
+        },
 
-    lessThan: function (value) {
-        if (this.field === undefined) {
+        collection: function (collection) {
+            this.collection = collection;
+
             return this;
-        }
-        if (!this.invertCondition) {
-            this.query[this.field] = { $lt : value.toString() };
-        } else {
-            this.query[this.field] = { $not: { $lt : value.toString() } };
-        }
-        return this;
-    },
+        },
 
-    greatThan: function (value) {
-        if (this.field === undefined) {
+        where: function (field) {
+            this.field = field;
+            this.invertCondition = false;
+
             return this;
-        }
-        if (!this.invertCondition) {
-            this.query[this.field] = { $gt : value.toString() };
-        } else {
-            this.query[this.field] = { $not: { $gt : value.toString() } };
-        }
-        return this;
+        },
 
-    },
+        equal: function (value) {
+            if (this.field === undefined) {
+                console.log('warning: field was not set. Use .where() method.')
+                return this;
+            }
 
-    include: function (list) {
-        if (this.field === undefined) {
+            var condition = {};
+
+            condition[this.field] = !this.invertCondition ? value : { $ne: value};
+            this.conditions.push(condition);
+
             return this;
-        }
-        if (!this.invertCondition) {
-            this.query[this.field] = { $in : list };
-        } else {
-            this.query[this.field] = { $not: { $in : list } };
-        }
-        return this;
-    },
+        },
 
-    not: function () {
-        this.invertCondition = this.invertCondition ? false : true;
-        return this;
-    },
+        lessThan: function (value) {
+            if (this.field === undefined) {
+                console.log('warning: field was not set. Use .where() method.')
+                return this;
+            }
 
-    find: function(callback) {
-        MongoClient.connect(this.server, (function(err, db) {
-            var col = db.collection(this.collection);
-            console.log(this.query);
-            col.find(this.query).toArray(function(err, data) {
-                db.close();
-                this.query = {};
-                callback(err, data);
-            });
-        }).bind(this));
-    }
+            var condition = {};
+
+            condition[this.field] = !this.invertCondition ? {$lt: value} : {$not: {$lt: value}};
+            this.conditions.push(condition);
+
+            return this;
+        },
+
+        greatThan: function (value) {
+            if (this.field === undefined) {
+                console.log('warning: field was not set. Use .where() method.')
+                return this;
+            }
+
+            var condition = {};
+
+            condition[this.field] = !this.invertCondition ? {$gt: value} : {$not: {$gt: value}};
+            this.conditions.push(condition);
+
+            return this;
+
+        },
+
+        include: function (list) {
+            if (this.field === undefined) {
+                console.log('warning: field was not set. Use .where() method.')
+                return this;
+            }
+
+            var condition = {};
+
+            condition[this.field] = !this.invertCondition ? {$in: list} : {$not: {$in: list}};
+            this.conditions.push(condition);
+
+            return this;
+        },
+
+        not: function () {
+            if (this.field === undefined) {
+                console.log('warning: field was not set. Use .where() method.')
+                return this;
+            }
+
+            this.invertCondition = this.invertCondition ? false : true;
+
+            return this;
+        },
+
+        set: function (field, value) {
+            this.updates[field] = value;
+
+            return this;
+        },
+
+        find: function (callback) {
+            if (this.server === undefined) {
+                    callback(new Error('Server was not set. Use .server() method'), null);
+                return;
+            }
+            if (this.collection === undefined) {
+                callback(new Error('Collection was not set. Use .collection() method'), null);
+                return;
+            }
+
+            var client = new MongoClient();
+
+            client.connect(this.server, (function (err, db) {
+                if (err) {
+                    callback(err, null);
+                    return;
+                }
+
+                var col = db.collection(this.collection);
+                var query = this.conditions.length === 0 ? {} : {$and: this.conditions};
+
+                col.find(query).toArray((function (err, data) {
+                    db.close();
+                    this.query = [];
+                    this.updates = {};
+                    callback(err, data);
+                }).bind(this));
+            }).bind(this));
+        },
+
+        remove: function (callback) {
+            if (this.server === undefined) {
+                callback(new Error('Server was not set. Use .server() method'), null);
+                return;
+            }
+            if (this.collection === undefined) {
+                callback(new Error('Collection was not set. Use .collection() method'), null);
+                return;
+            }
+
+            var client = new MongoClient();
+
+            client.connect(this.server, (function (err, db) {
+                if (err) {
+                    callback(err, null);
+                    return;
+                }
+
+                var col = db.collection(this.collection);
+                var query = this.conditions.length === 0 ? {} : {$and: this.conditions};
+
+                col.remove(query, null, (function (err, data) {
+                    db.close();
+                    this.query = [];
+                    this.updates = {};
+                    callback(err, data);
+                }).bind(this));
+            }).bind(this));
+        },
+
+        update: function (callback) {
+            if (this.server === undefined) {
+                callback(new Error('Server was not set. Use .server() method'), null);
+                return;
+            }
+            if (this.collection === undefined) {
+                callback(new Error('Collection was not set. Use .collection() method'), null);
+                return;
+            }
+            if (Object.keys(this.updates).length === 0) {
+                callback(new Error('Updates was not set. Use .set() method'), null);
+                return;
+            }
+
+            var client = new MongoClient();
+
+            client.connect(this.server, (function (err, db) {
+                if (err) {
+                    callback(err, null);
+                    return;
+                }
+
+                var col = db.collection(this.collection);
+                var query = this.conditions.length === 0 ? {} : {$and: this.conditions};
+                var updateQuery = {$set: this.updates};
+
+                col.update(query, updateQuery, null, (function (err, data) {
+                    db.close();
+                    this.query = [];
+                    this.updates = {};
+                    callback(err, data);
+                }).bind(this));
+            }).bind(this));
+        },
+
+        insert: function (record, callback) {
+            if (this.server === undefined) {
+                callback(new Error('Server was not set. Use .server() method'), null);
+                return;
+            }
+            if (this.collection === undefined) {
+                callback(new Error('Collection was not set. Use .collection() method'), null);
+                return;
+            }
+
+            var client = new MongoClient();
+
+            client.connect(this.server, (function (err, db) {
+                if (err) {
+                    callback(err, null);
+                    return;
+                }
+
+                var col = db.collection(this.collection);
+
+                col.insert(record, null, (function (err, data) {
+                    db.close();
+                    this.query = [];
+                    this.updates = {};
+                    callback(err, data);
+                }).bind(this));
+            }).bind(this));
+        }
+
+
+    };
 };
