@@ -100,12 +100,10 @@ module.exports = function () {
         },
 
         find: function (callback) {
-            if (this.server === undefined) {
-                    callback(new Error('Server was not set. Use .server() method'), null);
-                return;
-            }
-            if (this.collection === undefined) {
-                callback(new Error('Collection was not set. Use .collection() method'), null);
+            var error = this.checkArgs();
+
+            if (error !== null) {
+                callback(error, null);
                 return;
             }
 
@@ -122,20 +120,18 @@ module.exports = function () {
 
                 col.find(query).toArray((function (err, data) {
                     db.close();
-                    this.query = [];
-                    this.updates = {};
+                    this.reset();
+
                     callback(err, data);
                 }).bind(this));
             }).bind(this));
         },
 
         remove: function (callback) {
-            if (this.server === undefined) {
-                callback(new Error('Server was not set. Use .server() method'), null);
-                return;
-            }
-            if (this.collection === undefined) {
-                callback(new Error('Collection was not set. Use .collection() method'), null);
+            var error = this.checkArgs();
+
+            if (error !== null) {
+                callback(error, null);
                 return;
             }
 
@@ -152,22 +148,21 @@ module.exports = function () {
 
                 col.remove(query, null, (function (err, data) {
                     db.close();
-                    this.query = [];
-                    this.updates = {};
+                    this.reset();
+
                     callback(err, data);
                 }).bind(this));
             }).bind(this));
         },
 
         update: function (callback) {
-            if (this.server === undefined) {
-                callback(new Error('Server was not set. Use .server() method'), null);
+            var error = this.checkArgs();
+
+            if (error !== null) {
+                callback(error, null);
                 return;
             }
-            if (this.collection === undefined) {
-                callback(new Error('Collection was not set. Use .collection() method'), null);
-                return;
-            }
+
             if (Object.keys(this.updates).length === 0) {
                 callback(new Error('Updates was not set. Use .set() method'), null);
                 return;
@@ -187,20 +182,18 @@ module.exports = function () {
 
                 col.update(query, updateQuery, null, (function (err, data) {
                     db.close();
-                    this.query = [];
-                    this.updates = {};
+                    this.reset();
+
                     callback(err, data);
                 }).bind(this));
             }).bind(this));
         },
 
         insert: function (record, callback) {
-            if (this.server === undefined) {
-                callback(new Error('Server was not set. Use .server() method'), null);
-                return;
-            }
-            if (this.collection === undefined) {
-                callback(new Error('Collection was not set. Use .collection() method'), null);
+            var error = this.checkArgs();
+
+            if (error !== null) {
+                callback(error, null);
                 return;
             }
 
@@ -216,13 +209,41 @@ module.exports = function () {
 
                 col.insert(record, null, (function (err, data) {
                     db.close();
-                    this.query = [];
-                    this.updates = {};
+                    this.reset();
+
                     callback(err, data);
                 }).bind(this));
             }).bind(this));
-        }
+        },
 
+        checkArgs: function () {
+            if (!this.serverIsSet()) {
+                return new Error('Server was not set. Use .server() method');
+            }
+
+            if (!this.collectionIsSet()) {
+                return new Error('Collection was not set. Use .collection() method');
+            }
+
+            return null;
+        },
+
+        serverIsSet: function () {
+            return this.server === undefined;
+        },
+
+        collectionIsSet: function () {
+            return this.collection === undefined;
+        },
+
+        reset: function () {
+            this.conditions = [];
+            this.updates = {};
+            this.field = undefined;
+            this.invertCondition = false;
+            this.server = undefined;
+            this.collection = undefined;
+        }
 
     };
 };
