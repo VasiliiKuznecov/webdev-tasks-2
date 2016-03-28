@@ -170,7 +170,7 @@ module.exports = function () {
 
             var client = new MongoClient();
 
-            client.connect(this.server, (function (err, db) {
+            client.connect(this.server, (err, db) => {
                 if (err) {
                     callback(err, null);
                     return;
@@ -180,13 +180,13 @@ module.exports = function () {
                 var query = this.conditions.length === 0 ? {} : {$and: this.conditions};
                 var updateQuery = {$set: this.updates};
 
-                col.update(query, updateQuery, null, (function (err, data) {
+                col.update(query, updateQuery, null, (err, data) => {
                     db.close();
                     this.reset();
 
                     callback(err, data);
-                }).bind(this));
-            }).bind(this));
+                });
+            });
         },
 
         insert: function (record, callback) {
@@ -217,23 +217,23 @@ module.exports = function () {
         },
 
         checkArgs: function () {
-            if (!this.serverIsSet()) {
+            if (!this.isServerSet()) {
                 return new Error('Server was not set. Use .server() method');
             }
 
-            if (!this.collectionIsSet()) {
+            if (!this.isCollectionSet()) {
                 return new Error('Collection was not set. Use .collection() method');
             }
 
             return null;
         },
 
-        serverIsSet: function () {
-            return this.server === undefined;
+        isServerSet: function () {
+            return this.server !== undefined;
         },
 
-        collectionIsSet: function () {
-            return this.collection === undefined;
+        isCollectionSet: function () {
+            return this.collection !== undefined;
         },
 
         reset: function () {
@@ -241,8 +241,6 @@ module.exports = function () {
             this.updates = {};
             this.field = undefined;
             this.invertCondition = false;
-            this.server = undefined;
-            this.collection = undefined;
         }
 
     };
